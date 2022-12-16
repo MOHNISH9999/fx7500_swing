@@ -306,6 +306,7 @@ public class RFIDSample4App {
             antennaID = Integer.valueOf(inputReader.readLine());
             g1_singulationControl = myReader.Config.Antennas.getSingulationControl(antennaID);
 
+
             System.out.println("Session: "+g1_singulationControl.getSession());
             System.out.println("TagPopulation: "+g1_singulationControl.getTagPopulation());
             System.out.println("TagTransitTime: "+g1_singulationControl.getTagTransitTime());

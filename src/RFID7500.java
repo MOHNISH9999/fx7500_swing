@@ -3,8 +3,6 @@ import com.mot.rfid.api3.*;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -20,7 +18,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class RFID7500 extends JFrame {
+public class RFID7500 extends JFrame implements ActionListener{
     private JTextField textField1;
     private JButton connectButton;
     private JButton disconnectButton;
@@ -36,12 +34,18 @@ public class RFID7500 extends JFrame {
     private JLabel readerinfo2;
     private JLabel readtagnolabel;
     private JButton stopbutton;
+    private JLabel empty;
+
 
     SwingWorker<Void,String> worker,worker2;
 
     int thsleep;
 
     boolean keepruning=true;
+    String uorb[]={"Read Unique","Read Bundle"};
+    private JComboBox uniqorbund;
+    private JButton clearButton;
+    private JLabel uniquetagsreadlabel;
 
 
     //RFidActive rd;
@@ -283,6 +287,8 @@ public class RFID7500 extends JFrame {
     updateTags(Boolean isAccess)
     {
         TagDataArray oTagDataArray = myReader.Actions.getReadTagsEx(1000);
+
+        //TagData[] demotry=myReader.Actions.getReadTags(1000);
         myTags = oTagDataArray.getTags();
 
         if (myTags != null)
@@ -293,9 +299,9 @@ public class RFID7500 extends JFrame {
                 {
                     TagData tag = myTags[index];
                     String key = tag.getTagID();
-                    // if (!tagStore.containsKey(key))
-                    // {
-                    //	tagStore.put(key,totalTags);
+//                     if (!tagStore.containsKey(key))
+//                     {
+//                    	tagStore.put(key,totalTags);
                     postInfoMessage("ReadTag "+key);
                     worker=new SwingWorker<Void, String>() {
                         @Override
@@ -321,13 +327,94 @@ public class RFID7500 extends JFrame {
 
 
 
+
+
+
+
+
+//                    uniqueTags++;
+//                     }
+                    totalTags++;
                     readtagnolabel.setText("Tags Read: "+totalTags);
+                }
+
+            }
+            else
+            {
+                for (int index = 0; index < myTags.length; index++)
+                {
+                    TagData tag = myTags[index];
+                    if(tag.getMemoryBankData() != null)
+                        postInfoMessage("TagID "+tag.getTagID()+tag.getMemoryBank().toString()+"  "+tag.getMemoryBankData());
+                    else
+                        postInfoMessage("TagID "+tag.getTagID()+"Access Status:  "+tag.getOpStatus().toString());
+
+                }
+            }
 
 
 
 
-                    //uniqueTags++;
-                    // }
+        }
+
+    }
+
+
+
+
+
+    void
+    updateTags_unique(Boolean isAccess)
+    {
+        TagDataArray oTagDataArray = myReader.Actions.getReadTagsEx(1000);
+
+        //TagData[] demotry=myReader.Actions.getReadTags(1000);
+        myTags = oTagDataArray.getTags();
+
+        if (myTags != null)
+        {
+            if(!isAccess)
+            {
+                for (int index = 0; index < oTagDataArray.getLength(); index++)
+                {
+                    TagData tag = myTags[index];
+                    String key = tag.getTagID();
+                     if (!tagStore.containsKey(key))
+                     {
+                    	tagStore.put(key,totalTags);
+                    postInfoMessage("ReadTag "+key);
+                    worker=new SwingWorker<Void, String>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            if(isCancelled()){
+                                return null;
+                            }
+                            publish(key);
+                            return null;
+                        }
+
+                        @Override
+                        protected void process(List<String> chunks) {
+                            for(String line:chunks){
+                                listy.addElement(chunks.toString());
+                                list1.setModel(listy);
+                            }
+                            super.process(chunks);
+                        }
+                    };
+                    worker.execute();
+                    //listy.addElement("Tag Read: "+key);
+
+
+
+                    //readtagnolabel.setText("Tags Read: "+totalTags);
+
+
+
+
+                    uniqueTags++;
+                    uniquetagsreadlabel.setText("Unique-Tags Read: "+uniqueTags);
+                     }
                     totalTags++;
                 }
 
@@ -351,6 +438,9 @@ public class RFID7500 extends JFrame {
         }
 
     }
+
+
+
 
 
 
@@ -539,7 +629,10 @@ public class RFID7500 extends JFrame {
 
     }
 
-
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        System.out.println(uniqorbund.getSelectedItem());
+    }
 
 
     public class EventsHandler implements RfidEventsListener
@@ -551,7 +644,14 @@ public class RFID7500 extends JFrame {
 
         public void eventReadNotify(RfidReadEvents rre) {
 
-            updateTags(false);
+            if(uniqorbund.getSelectedItem()=="Bundle-Read"){
+                updateTags(false);
+            }
+            else {
+                updateTags_unique(false);
+            }
+
+
         }
 
 
@@ -605,10 +705,15 @@ public class RFID7500 extends JFrame {
 
 
 
-    public RFID7500() {
+     RFID7500() {
 
 
         myReader = new RFIDReader();
+
+        uniqorbund.addActionListener(this);
+
+
+
 
         // Hash table to hold the tag data
         tagStore = new Hashtable();
@@ -684,6 +789,7 @@ public class RFID7500 extends JFrame {
 
                 //rd.activatethread();
 
+                //String jb= String.valueOf(myReader.SecureConnectionInfo.getConnectionStatus());
 
 
 
@@ -697,6 +803,9 @@ public class RFID7500 extends JFrame {
 
             }
         });
+
+
+
 
         disconnectButton.addActionListener(new ActionListener() {
             @Override
@@ -760,6 +869,8 @@ public class RFID7500 extends JFrame {
                 };
                 worker2.execute();
 
+
+
 //                try {
 //
 //                } catch (InterruptedException ex) {
@@ -799,22 +910,74 @@ public class RFID7500 extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 //keepruning=false;
+//                AntennaInfo ae=new AntennaInfo();
+//                String foo= Arrays.toString(ae.getAntennaID());
+//                System.out.println("Antenna No: "+foo);
                 worker.cancel(true);
                 worker2.cancel(true);
             }
         });
+
         startButton.setBorder(new LineBorder(Color.BLACK));
         stopbutton.setBorder(new LineBorder(Color.BLACK));
         connectButton.setBorder(new LineBorder(Color.BLACK));
         disconnectButton.setBorder(new LineBorder(Color.BLACK));
         readerinfo2.setBorder(new LineBorder(Color.ORANGE));
-    }
+
+
+
+
+
+//        String srt1 = "javax.swing.plaf.metal.MetalLookAndFeel";
+//        String srt2 = "javax.swing.plaf.nimbus.NimbusLookAndFeel";
+//        String srt3 = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
+//        String srt4 = "com.sun.java.swing.plaf.windows.WindowsClassicLookAndFeel";
+//        String srt5 = "com.sun.java.swing.plaf.motif.MotifLookAndFeel";
+//        String srt6 = "com.sun.java.swing.plaf.gtk.GTKLookAndFeel";
+//        try {
+//            UIManager.setLookAndFeel(srt6);
+//            SwingUtilities.updateComponentTreeUI(this);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        JFrame.setDefaultLookAndFeelDecorated(true);
+         clearButton.addActionListener(new ActionListener() {
+             @Override
+             public void actionPerformed(ActionEvent e) {
+                 uniqueTags=0;
+                 totalTags=0;
+                 listy.removeAllElements();
+                 list1.setModel(listy);
+                 readtagnolabel.setText("Tags Read: 0");
+                 uniquetagsreadlabel.setText("Unique-Tags Read: 0");
+             }
+         });
+     }
 
 
     public static void main(String[] args) {
 
 
 
+
+
+
+
+//        try {
+//            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+//                if ("Metal".equals(info.getName())) {
+//                    UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
+//        } catch (Exception e) {
+//            // If Nimbus is not available, fall back to cross-platform
+//            try {
+//                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+//            } catch (Exception ex) {
+//                // Not worth my time
+//            }
+//        }
         RFID7500 d = new RFID7500();
         d.setContentPane(d.mainpanel);
         d.setTitle("FX7500");
